@@ -7,6 +7,7 @@ import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.application.Platform;
 import javafx.event.ActionEvent;
+import javafx.event.EventHandler;
 import javafx.scene.Scene;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
@@ -52,17 +53,16 @@ public class App extends Application {
     Pane pane;
     Scene scene;
     Timeline timeLine;
+    ArrayList<ScreenCapture> sc = new ArrayList<>();
 
     @Override
     public void start(Stage stage) {
-        
+
         //Adding background image if needed
 //        Image image = new Image("file:image.jpg", 1920, 1080, false, true);
 //        BackgroundImage bi = new BackgroundImage(image, BackgroundRepeat.REPEAT,
 //                BackgroundRepeat.NO_REPEAT, BackgroundPosition.DEFAULT, BackgroundSize.DEFAULT);
 //        Background background = new Background(bi);
-
-
         // Initialize the game pane
         pane = new Pane();
         pane.setBackground(Background.fill(Color.TRANSPARENT));
@@ -72,7 +72,7 @@ public class App extends Application {
         drawCircle();
         snake = getNewSnake();
         createLabel();
-        
+
         // Add elements to the pane
         pane.getChildren().addAll(circle, label);
         pane.getChildren().addAll(snake);
@@ -102,7 +102,7 @@ public class App extends Application {
 
     // Handle key events for game control
     private void sceneKeyPressed(KeyEvent e) {
-        
+
         // Game initialization on the first key press
         if (!gameStarted) {
             if (e.getCode() == KeyCode.D || e.getCode() == KeyCode.RIGHT) {
@@ -113,6 +113,10 @@ public class App extends Application {
             directionX = 0;
             directionY = 0;
             timeLine.play();
+        }
+
+        if (e.getCode() == KeyCode.R) {
+            replay();
         }
 
         // Avoid opposite direction key press to prevent self-collision
@@ -128,7 +132,7 @@ public class App extends Application {
         if (lastKey == KeyCode.S && (e.getCode() == KeyCode.W || e.getCode() == KeyCode.UP)) {
             return;
         }
-        
+
         // Game over check
         if (gameOver) {
             return;
@@ -203,6 +207,25 @@ public class App extends Application {
             snakeAndAppleCollision();
             checkSnakeCollision();
 
+            // every time we move we need to save ScreenCapture in sc ArrayList of Screen Captures
+            ScreenCapture scTemp = new ScreenCapture();
+
+            // let's save circle first
+            scTemp.circle = new Circle(circle.getCenterX(), circle.getCenterY(), circle.getRadius());
+            scTemp.circle.setFill(circle.getFill());
+            scTemp.circle.setStroke(circle.getStroke());
+            scTemp.circle.setStrokeWidth(circle.getStrokeWidth());
+
+            // now save the snake
+            scTemp.snake = new ArrayList<>();
+            // for each rectangle already existing in the screen
+            for (int i = 0; i < snake.size(); i++) {
+                Rectangle rTemp = new Rectangle(snake.get(i).getX(), snake.get(i).getY(), rectangleWidth, rectangleHeight);
+                scTemp.snake.add(rTemp);
+                scTemp.snake.get(i).setFill(snake.get(i).getFill());
+            }
+            sc.add(scTemp);
+
         }
 
     }
@@ -275,7 +298,7 @@ public class App extends Application {
         double cordX = 0;
         double cordY = 0;
 
-         // Calculate the position of the new rectangle based on the direction of movement
+        // Calculate the position of the new rectangle based on the direction of movement
         if (directionX < 0) {
             cordX = tail.getX() + distance;
             cordY = tail.getY();
@@ -307,7 +330,7 @@ public class App extends Application {
             Shape collision = Shape.intersect(snake.get(0), snake.get(i));
 
             if (collision.getBoundsInLocal().getWidth() != -1) {
-                 // If collision occurs with the snake itself, trigger the game over state
+                // If collision occurs with the snake itself, trigger the game over state
                 gameOver();
             }
         }
@@ -326,7 +349,7 @@ public class App extends Application {
         label.setLayoutX(Screen.getPrimary().getBounds().getWidth() / 2 - label.getWidth() - 100);
         label.setLayoutY(Screen.getPrimary().getBounds().getHeight() / 2 - label.getHeight() / 2);
 
-         // Allow the user to exit the game with ESC, or restart with N
+        // Allow the user to exit the game with ESC, or restart with N
         scene.setOnKeyPressed(e -> {
             if (e.getCode() == KeyCode.ESCAPE) {
                 Platform.exit();
@@ -334,27 +357,71 @@ public class App extends Application {
             if (e.getCode() == KeyCode.N) {
                 resetGame();
             }
+            if(e.getCode() == KeyCode.R){
+                replay();
+            }
         });
 
     }
 
     // Reset the game to its initial state
     private void resetGame() {
+        
+        sc = new ArrayList<>();
         directionX = 0;
         directionY = 0;
-        pane.getChildren().removeAll(snake);
-        pane.getChildren().removeAll(label, circle);
+        pane.getChildren().remove(0, pane.getChildren().size());
         snake = getNewSnake();
-        drawCircle();
-        createLabel();
         pane.getChildren().addAll(snake);
-        pane.getChildren().addAll(label, circle);
+        drawCircle();
+        pane.getChildren().addAll(circle, label);
         timeLine.pause();
         gameStarted = false;
         gameOver = false;
         label.setText("" + (snake.size() - initSize));
         label.setTextFill(Color.BLUE);
         scene.setOnKeyPressed(this::sceneKeyPressed);
+    }
+
+    private void replay() {
+        
+        directionX = 0;
+        directionY = 0;
+        gameStarted = false;
+        gameOver = false;
+
+        pane.getChildren().remove(0, pane.getChildren().size());
+        pane.getChildren().add(label);
+        label.setTextFill(Color.BLUE);
+        label.setText("0");
+
+        KeyFrame kf = new KeyFrame(Duration.millis(30), new EventHandler<ActionEvent>() {
+
+            int counter = 0;
+
+            @Override
+            public void handle(ActionEvent t) {
+                //clean the screen
+                pane.getChildren().remove(0, pane.getChildren().size());
+
+                // redraw new snake
+                pane.getChildren().addAll(sc.get(counter).snake);
+
+                //redraw a circle
+                pane.getChildren().add(sc.get(counter).circle);
+
+                //redraw label
+                pane.getChildren().add(label);
+                label.setText("" + (sc.get(counter).snake.size() - initSize));
+
+                counter++;
+            }
+        });
+
+        Timeline timeline = new Timeline(kf);
+        timeline.setCycleCount(sc.size());
+        timeline.play();
+        
     }
 
 }
