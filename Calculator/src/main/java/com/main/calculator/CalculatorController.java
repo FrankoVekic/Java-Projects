@@ -238,6 +238,20 @@ public class CalculatorController implements Initializable {
 
         Platform.runLater(() -> {
 
+            if (text.getText().equals("Can't divide by 0")) {
+                text.setText("0");
+                buttons.forEach((t) -> {
+                    t.setDisable(false);
+                    if (t == mrButton || t == mcButton) {
+                        if (memory.getText().equals("0")) {
+                            t.setDisable(true);
+                        } else {
+                            t.setDisable(false);
+                        }
+                    }
+                });
+            }
+
             if (number1.compareTo(BigDecimal.ZERO) <= 0 && text.getText().equals("0") && number2.compareTo(BigDecimal.ZERO) <= 0) {
                 numbersClickedLabel.setText("0 = ");
                 return;
