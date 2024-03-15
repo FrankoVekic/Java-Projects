@@ -1,0 +1,6 @@
+com\main\inputwindowtransferapp\User.class
+com\main\inputwindowtransferapp\helpers\Statics.class
+com\main\inputwindowtransferapp\InputFormController.class
+com\main\inputwindowtransferapp\App.class
+module-info.class
+com\main\inputwindowtransferapp\LockedInputController.class
